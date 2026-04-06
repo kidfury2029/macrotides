@@ -4,28 +4,24 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
-import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional, Dict
+from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
+import stripe
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
-mongo_url = os.environ['MONGO_URL']
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+db_name = os.environ.get('DB_NAME', 'macrotides')
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[db_name]
 
 # Stripe setup
-from emergentintegrations.payments.stripe.checkout import (
-    StripeCheckout, 
-    CheckoutSessionResponse, 
-    CheckoutStatusResponse, 
-    CheckoutSessionRequest
-)
+stripe.api_key = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
 
 # Create the main app
 app = FastAPI()
@@ -71,16 +67,6 @@ class CheckoutRequest(BaseModel):
     cart_items: List[CartItem]
     shipping_address: ShippingAddress
     origin_url: str
-
-class Order(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    session_id: str
-    cart_items: List[CartItem]
-    shipping_address: ShippingAddress
-    total_amount: float
-    status: str = "pending"
-    payment_status: str = "initiated"
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # ===================
 # PRODUCT DATA - 12 POPULAR PEPTIDES
@@ -259,50 +245,76 @@ async def create_checkout_session(request: CheckoutRequest, http_request: Reques
     try:
         # Calculate total from server-side prices (security)
         total_amount = 0.0
+        line_items = []
+        
         for item in request.cart_items:
             if item.product_id in PRODUCTS_DICT:
                 product = PRODUCTS_DICT[item.product_id]
                 total_amount += product.price * item.quantity
+                
+                # Create line item for Stripe
+                line_items.append({
+                    'price_data': {
+                        'currency': 'usd',
+                        'product_data': {
+                            'name': product.name,
+                            'description': product.description[:500],
+                            'images': [product.image_url],
+                        },
+                        'unit_amount': int(product.price * 100),  # Stripe uses cents
+                    },
+                    'quantity': item.quantity,
+                })
             else:
                 raise HTTPException(status_code=400, detail=f"Invalid product: {item.product_id}")
         
         # Add shipping cost
         shipping_cost = 9.99 if total_amount < 100 else 0.0
+        if shipping_cost > 0:
+            line_items.append({
+                'price_data': {
+                    'currency': 'usd',
+                    'product_data': {
+                        'name': 'Shipping',
+                        'description': 'Standard shipping (Free over $100)',
+                    },
+                    'unit_amount': int(shipping_cost * 100),
+                },
+                'quantity': 1,
+            })
+        
         total_amount += shipping_cost
         
-        # Create order record first
+        # Create order record
         order_id = str(uuid.uuid4())
-        
-        # Setup Stripe
-        api_key = os.environ.get('STRIPE_API_KEY')
-        host_url = str(http_request.base_url)
-        webhook_url = f"{host_url}api/webhook/stripe"
-        stripe_checkout = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
         
         # Build success and cancel URLs from origin
         origin = request.origin_url.rstrip('/')
         success_url = f"{origin}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{origin}/checkout/cancel"
         
-        # Create checkout session
-        checkout_request = CheckoutSessionRequest(
-            amount=round(total_amount, 2),
-            currency="usd",
+        # Create Stripe checkout session
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=line_items,
+            mode='payment',
             success_url=success_url,
             cancel_url=cancel_url,
+            customer_email=request.shipping_address.email,
+            shipping_address_collection={
+                'allowed_countries': ['US', 'CA', 'GB', 'AU', 'DE'],
+            },
             metadata={
-                "order_id": order_id,
-                "customer_email": request.shipping_address.email,
-                "customer_name": request.shipping_address.full_name
+                'order_id': order_id,
+                'customer_email': request.shipping_address.email,
+                'customer_name': request.shipping_address.full_name
             }
         )
-        
-        session: CheckoutSessionResponse = await stripe_checkout.create_checkout_session(checkout_request)
         
         # Store order in database with pending status
         order_doc = {
             "id": order_id,
-            "session_id": session.session_id,
+            "session_id": session.id,
             "cart_items": [item.model_dump() for item in request.cart_items],
             "shipping_address": request.shipping_address.model_dump(),
             "total_amount": total_amount,
@@ -317,23 +329,25 @@ async def create_checkout_session(request: CheckoutRequest, http_request: Reques
         # Also store in payment_transactions collection
         transaction_doc = {
             "id": str(uuid.uuid4()),
-            "session_id": session.session_id,
+            "session_id": session.id,
             "order_id": order_id,
             "amount": total_amount,
             "currency": "usd",
             "email": request.shipping_address.email,
             "payment_status": "initiated",
-            "metadata": checkout_request.metadata,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.payment_transactions.insert_one(transaction_doc)
         
         return {
             "checkout_url": session.url,
-            "session_id": session.session_id,
+            "session_id": session.id,
             "order_id": order_id
         }
         
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"Checkout error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -342,13 +356,10 @@ async def create_checkout_session(request: CheckoutRequest, http_request: Reques
 async def get_checkout_status(session_id: str):
     """Get the status of a checkout session"""
     try:
-        api_key = os.environ.get('STRIPE_API_KEY')
-        stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
-        
-        status: CheckoutStatusResponse = await stripe_checkout.get_checkout_status(session_id)
+        session = stripe.checkout.Session.retrieve(session_id)
         
         # Update order status if payment is complete
-        if status.payment_status == "paid":
+        if session.payment_status == "paid":
             await db.orders.update_one(
                 {"session_id": session_id},
                 {"$set": {"payment_status": "paid", "status": "confirmed"}}
@@ -359,13 +370,13 @@ async def get_checkout_status(session_id: str):
             )
         
         return {
-            "status": status.status,
-            "payment_status": status.payment_status,
-            "amount_total": status.amount_total,
-            "currency": status.currency
+            "status": session.status,
+            "payment_status": session.payment_status,
+            "amount_total": session.amount_total,
+            "currency": session.currency
         }
         
-    except Exception as e:
+    except stripe.error.StripeError as e:
         logger.error(f"Status check error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -381,22 +392,30 @@ async def get_order(order_id: str):
 async def stripe_webhook(request: Request):
     """Handle Stripe webhooks"""
     try:
-        body = await request.body()
-        signature = request.headers.get("Stripe-Signature")
+        payload = await request.body()
+        sig_header = request.headers.get("Stripe-Signature")
+        endpoint_secret = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
         
-        api_key = os.environ.get('STRIPE_API_KEY')
-        stripe_checkout = StripeCheckout(api_key=api_key, webhook_url="")
+        if endpoint_secret:
+            try:
+                event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+            except stripe.error.SignatureVerificationError:
+                raise HTTPException(status_code=400, detail="Invalid signature")
+        else:
+            event = stripe.Event.construct_from(
+                values=stripe.util.json.loads(payload),
+                key=stripe.api_key
+            )
         
-        webhook_response = await stripe_checkout.handle_webhook(body, signature)
-        
-        # Update order based on webhook event
-        if webhook_response.payment_status == "paid":
+        # Handle the event
+        if event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
             await db.orders.update_one(
-                {"session_id": webhook_response.session_id},
+                {"session_id": session['id']},
                 {"$set": {"payment_status": "paid", "status": "confirmed"}}
             )
             await db.payment_transactions.update_one(
-                {"session_id": webhook_response.session_id},
+                {"session_id": session['id']},
                 {"$set": {"payment_status": "paid"}}
             )
             
