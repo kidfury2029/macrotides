@@ -74,6 +74,7 @@ export default function Header() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-primary text-background text-xs font-bold rounded-full"
+                    data-testid="cart-count"
                   >
                     {cartCount}
                   </motion.span>

@@ -1,10 +1,25 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const CartContext = createContext();
 
+// Helper to load cart from localStorage
+const loadCartFromStorage = () => {
+  try {
+    const saved = localStorage.getItem('macrotides_cart');
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
 export function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(loadCartFromStorage);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Persist cart to localStorage
+  useEffect(() => {
+    localStorage.setItem('macrotides_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const addToCart = useCallback((product) => {
     setCartItems(prevItems => {
@@ -49,6 +64,7 @@ export function CartProvider({ children }) {
 
   const clearCart = useCallback(() => {
     setCartItems([]);
+    localStorage.removeItem('macrotides_cart');
   }, []);
 
   const cartTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
