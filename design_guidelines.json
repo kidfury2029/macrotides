@@ -1,0 +1,113 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 5: Jewel & Luxury",
+  "colors": {
+    "background": "#05030A",
+    "surface": "#0C0714",
+    "surface_glass": "rgba(12, 7, 20, 0.4)",
+    "primary": "#D4AF37",
+    "primary_hover": "#F1D570",
+    "secondary": "#3B0955",
+    "secondary_light": "#6B1D8A",
+    "text_primary": "#F8F7FA",
+    "text_secondary": "#A39BA8",
+    "border": "rgba(212, 175, 55, 0.15)",
+    "error": "#CF6679",
+    "warning": "#F2C94C",
+    "success": "#27AE60"
+  },
+  "typography": {
+    "heading_font": "Cormorant Garamond",
+    "body_font": "Manrope",
+    "scale": {
+      "h1": "text-5xl sm:text-6xl tracking-tighter leading-none font-light",
+      "h2": "text-3xl sm:text-4xl tracking-tight leading-tight",
+      "h3": "text-xl sm:text-2xl tracking-tight",
+      "h4": "text-lg sm:text-xl font-medium",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm tracking-wide uppercase font-semibold"
+    }
+  },
+  "layout": {
+    "spacing_system": "Generous spacing. Use p-8, p-12, p-16 for main sections.",
+    "grid_strategy": "Bento grids for categories. Mode A (Tetris) for marketing sections.",
+    "container_max_width": "max-w-7xl mx-auto px-6",
+    "surface_treatment": "Crystal Glassmorphism: bg-black/40 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)]."
+  },
+  "components": {
+    "navigation": {
+      "style": "Crystal Glass sticky header. z-50. bg-[#05030A]/70 backdrop-blur-xl border-b border-[#D4AF37]/10.",
+      "links": "Hover state must be text-[#D4AF37]."
+    },
+    "hero": {
+      "style": "Full height or min-h-[80vh]. Background uses image overlaid with bg-gradient-to-b from-[#05030A]/60 to-[#05030A].",
+      "alignment": "Center aligned or optical asymmetric layout."
+    },
+    "buttons": {
+      "primary": "bg-[#D4AF37] text-black font-semibold rounded-none tracking-wide hover:bg-[#F1D570] transition-colors duration-300",
+      "secondary": "bg-transparent text-[#D4AF37] border border-[#D4AF37]/50 rounded-none hover:bg-[#D4AF37]/10 transition-colors duration-300",
+      "ghost": "text-[#A39BA8] hover:text-[#D4AF37] transition-colors duration-300"
+    },
+    "product_cards": {
+      "style": "Flat surface or slight glass. border border-[#D4AF37]/10. No heavy shadows. Hover: -translate-y-1, border-[#D4AF37]/30, shadow-[0_10px_40px_-10px_rgba(212,175,55,0.15)].",
+      "image_container": "bg-[#0C0714] aspect-square overflow-hidden. Image should scale slightly on card hover."
+    },
+    "disclaimer_banner": {
+      "style": "Top-most fixed banner. bg-[#3B0955] text-[#F8F7FA] text-xs sm:text-sm text-center py-2 tracking-widest uppercase font-semibold border-b border-[#D4AF37]/20."
+    }
+  },
+  "animations": {
+    "hover": "Subtle scale up (scale-105) for images, smooth color transitions (duration-300 ease-out).",
+    "scroll": "Fade up and staggered entrance for product lists using framer-motion. y: 20 -> y: 0.",
+    "microinteractions": "Button click scale down (scale-95)."
+  },
+  "media": {
+    "images": [
+      {
+        "category": "hero_background",
+        "url": "https://images.unsplash.com/photo-1662948496624-669ce77ed50d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NjV8MHwxfHNlYXJjaHwxfHxwdXJwbGUlMjBnb2xkJTIwYWJzdHJhY3R8ZW58MHx8fHwxNzc1NDQzMjkyfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract dark purple and gold motion blur for hero background."
+      },
+      {
+        "category": "product_placeholder_1",
+        "url": "https://images.unsplash.com/photo-1606206605628-0a09580d44a1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwyfHxsYWJvcmF0b3J5JTIwdmlhbHxlbnwwfHx8fDE3NzU0NDMyODF8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Scientific laboratory tools and vials with metallic reflections."
+      },
+      {
+        "category": "product_placeholder_2",
+        "url": "https://images.unsplash.com/photo-1579154341184-22069e4614d2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHw0fHxsYWJvcmF0b3J5JTIwdmlhbHxlbnwwfHx8fDE3NzU0NDMyODF8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Clear glass test tubes and vials for product stand-in."
+      },
+      {
+        "category": "category_background",
+        "url": "https://images.unsplash.com/photo-1684162204492-ba6ada89197a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA3MDB8MHwxfHNlYXJjaHwzfHxETkElMjBoZWxpeCUyMHB1cnBsZXxlbnwwfHx8fDE3NzU0NDMyOTJ8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract purple scientific background with dots and lines."
+      }
+    ],
+    "icons": {
+      "library": "@phosphor-icons/react",
+      "instruction": "Use Phosphor Icons with Duotone weight for a high-end luxury feel. Install via `yarn add @phosphor-icons/react`."
+    }
+  },
+  "accessibility": {
+    "contrast": "Ensure text over images has dark overlays. Primary buttons have black text on gold background for > 4.5:1 contrast.",
+    "focus": "focus:ring-2 focus:ring-[#D4AF37] focus:ring-offset-2 focus:ring-offset-[#05030A] focus:outline-none.",
+    "motion": "Respect prefers-reduced-motion for all framer-motion animations."
+  },
+  "testing": {
+    "attributes": "All interactive elements MUST include data-testid attributes (e.g., data-testid='add-to-cart-button', data-testid='checkout-button', data-testid='cart-icon')."
+  },
+  "instructions_to_main_agent": [
+    "Install required dependencies: `yarn add @phosphor-icons/react framer-motion @stripe/stripe-js clsx tailwind-merge`.",
+    "Setup Tailwind config with custom colors: background, surface, primary (gold), secondary (purple).",
+    "Add 'Cormorant Garamond' and 'Manrope' from Google Fonts to index.html and tailwind.config.js.",
+    "Use Shadcn UI sparingly; for e-commerce product grids, build custom pure HTML/Tailwind components to ensure the 'Jewel & Luxury' dark aesthetic.",
+    "Create a prominent Top Banner for the 'Research purposes only, not for human consumption' disclaimer.",
+    "Implement guest checkout flow integrating Stripe Elements (Stripe payment integration). Include email and shipping address collection.",
+    "Ensure all components use the generous spacing scale (p-8, p-12).",
+    "Products should be organized by categories. Use the provided images as placeholders for peptides.",
+    "Do NOT use `Inter` for headings. Ensure headings use Cormorant Garamond.",
+    "Include a shopping cart drawer or page with a smooth animation.",
+    "Implement Email notifications logic stub or UI feedback for order confirmation."
+  ]
+}
