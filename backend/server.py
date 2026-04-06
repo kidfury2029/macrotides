@@ -425,6 +425,20 @@ async def stripe_webhook(request: Request):
         logger.error(f"Webhook error: {str(e)}")
         return {"status": "error", "message": str(e)}
 
+# Root endpoint for health check
+@app.get("/")
+async def health_check():
+    return {
+        "status": "ok",
+        "service": "Macrotides API",
+        "version": "1.0.0",
+        "endpoints": {
+            "products": "/api/products",
+            "categories": "/api/categories",
+            "checkout": "/api/checkout/create-session"
+        }
+    }
+
 # Include router
 app.include_router(api_router)
 
